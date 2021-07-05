@@ -908,3 +908,268 @@ zunionstore dst numkeys key [key ...] [WEIGHTS weight [weight]] [AGGREGATE SUM|M
 > + 如果`dst`存在则被覆盖
 
 ![image-20210702145600390](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210702145600390.png)
+
+## Redis HyperLogLog
+
+> + Redis HyperLogLog 是用来做基数统计的算法，HyperLogLog 的优点是，在输入元素的数量或者体积非常非常大时，计算基数所需的空间总是固定 的、并且是很小的
+> + 在 Redis 里面，每个 HyperLogLog 键只需要花费 12 KB 内存，就可以计算接近 2^64 个不同元素的基 数。这和计算基数时，元素越多耗费内存就越多的集合形成鲜明对比
+> + 但是，因为 HyperLogLog 只会根据输入元素来计算基数，而不会储存输入元素本身，所以 HyperLogLog 不能像集合那样，返回输入的各个元素
+
+### pfadd 
+
+``` set
+pfadd key element [element ...]
+```
+
+> + 添加指定元素到 HyperLogLog 中
+
+![image-20210702152517177](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210702152517177.png)
+
+### pfcount
+
+``` set
+pfcount key
+```
+
+> + 返回HyperLogLog中的元素个数
+
+![image-20210702152517177](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210702152517177.png)
+
+### pfmerge
+
+``` set
+pfmerge dest key [key ...]
+```
+
+> + 将多个HyperLogLog值合并到一个唯一值中，该值将近似于所观察到的源HyperLogLog结构集合的联合基数。
+> + 计算的合并HyperLogLog设置为目标变量，如果不存在，则创建该变量（默认为空超日志）。
+> + 如果目标变量存在，则将其视为源集之一，其基数将包含在计算的HyperLogLog的基数中
+
+![image-20210702152916564](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210702152916564.png)
+
+> + HyperLogLog并不是一种新的数据结构（实际类型为字符串类型），而是一种基础算法，
+>   通过HyperLogLog可以利用极小的内存空间完成独立总数的统计，数据集可以是IP、Email、ID等
+> + 基数：一个集合中不同元素的个数，集合中的元素可重复
+> + 应用场景：
+>   + 比如电商统计有多少人浏览了某个商品
+>   + 下面示例中表示总共有4个人点击了`goods:url`链接
+
+![image-20210702154612644](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210702154612644.png)
+
+## Reids Pub/Sub
+
+> + Redis消息发布与订阅实现了`消息传递范式`
+> + 发布者不需要直接发送消息给接收者，而是把消息封装到channel中，而不知道有哪些订阅者
+> + 订阅者可能对一个或者多个channel感兴趣，并且只接收感兴趣的消息，而不知道有什么发布者。
+> + 发布者和订阅者的这种解耦可以允许更大可伸缩性和更动态的网络拓扑
+
+### subscribe
+
+``` set
+subscribe channel [channel ...]
+```
+
+> + 订阅了 多个channel
+
+![image-20210702155853451](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210702155853451.png)
+
+### psubscribe
+
+``` set
+psubscribe channel_pattern
+```
+
+> + 订阅某种规则的channel
+
+![image-20210702160519916](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210702160519916.png)
+
+### 事件通知
+
+> + 通知允许客户端订阅发布/子通道，以便接收以某种方式影响Redis数据集的事件。
+> + 例如这些事件可以被通知
+>   + 影响给定key的所有命令
+>   + 所有接收LPUSH操作的键
+>   + database0中过期的key
+> + 事件通过Pub/Sub发送，因为客户端实现Pub/Sub就能使用这些特征
+
+[博客](https://redis.io/topics/notifications)
+
+## Redis GEO
+
+> Redis GEO 主要用于存储地理位置信息，并对存储的信息进行操作，该功能在 Redis 3.2 版本新增。
+
+### geoadd 
+
+``` set
+geoadd key longitude latitude member [longitude latitude membe ...]
+```
+
+> 用于存储指定的地理空间位置，可以将一个或多个经度(longitude)、纬度(latitude)、位置名称(member)添加到指定的 key 中
+
+![image-20210705082716257](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210705082716257.png)
+
+### geopos 
+
+``` set
+geopos key member [member ...]
+```
+
+> geopos 用于从给定的 key 里返回所有指定名称(member)的位置（经度和纬度），不存在的返回 nil。
+
+![image-20210705083203175](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210705083203175.png)
+
+### geodist
+
+``` set
+geodist key member1 member2 [m|km|ft|mi]
+```
+
+> + geodist 用于返回两个给定位置之间的距离
+> + m：米 km：千米 ft：英尺 mi：英里，**默认 m**
+
+![image-20210705083419443](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210705083419443.png)
+
+### georadius
+
+``` set
+georadius key longitude latitude radius m|km|ft|mi [WITHCOORD] [WITHDIST] [WITHHASH] [COUNT count] [ASC|DESC] [STORE key] [STOREDIST key]
+```
+
+> + georadius 以给定的经纬度为中心， 返回键包含的位置元素当中， 与中心的距离不超过给定最大距离的所有位置元素
+> + WITHCOORD: 将位置元素的经度和维度也一并返回。
+> + WITHDIST: 在返回位置元素的同时， 将位置元素与中心之间的距离也一并返回
+> + WITHHASH: 以 52 位有符号整数的形式， 返回位置元素经过原始 geohash 编码的有序集合分值。 这个选项主要用于底层应用或者调试， 实际中的作用并不大。
+> + COUNT 限定返回的记录数
+> + ASC: 查找结果根据距离从近到远排序。
+> + DESC: 查找结果根据从远到近排序。
+
+![image-20210705085711820](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210705085711820.png)
+
+### georadiusbymember 
+
+``` set
+GEORADIUSBYMEMBER key member radius m|km|ft|mi [WITHCOORD] [WITHDIST] [WITHHASH] [COUNT count] [ASC|DESC] [STORE key] [STOREDIST key]
+```
+
+> georadiusbymember 和 GEORADIUS 命令一样， 都可以找出位于指定范围内的元素， 但是 georadiusbymember 的中心点是由给定的位置元素决定的， 而不是使用经度和纬度来决定中心点
+
+![image-20210705085952774](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210705085952774.png)
+
+### geohash
+
+``` set
+geohash key member [member ...]
+```
+
+> 用于获取一个或多个位置元素的geohash值
+>
+> Redis GEO使用geohash来保存地理位置的坐标
+
+![image-20210705090634803](C:\Users\EDZ\AppData\Roaming\Typora\typora-user-images\image-20210705090634803.png)
+
+### 总结
+
+> + 常适用于附近的人
+> + 打车软件等应用
+
+## Redis Cluster
+
+### 概念
+
+> + Redis集群提供了一种运行redis安装的方法，在该安装中，数据会自动分片到多个Redis节点上
+> + Redis集群在分区期间也提供了一定程度的可用性，即在某个节点出现故障时。
+> + Redis集群的好处
+>   + 自动分片的能力
+>   + 高可用的实现，即出现故障时业务还能继续正常操作
+
+### TCP 端口
+
+> + 每个Redis集群节点要求打开两个端口
+> + 给redis客户端使用的端口 默认 6379
+> + 数据端口加10000得到的端口，示例中为16379。
+> + 16379端口被用于集群总线，即节点与节点间通过二进制协议的通信
+> + 集群总线被节点用于故障检测、配置更新、故障转移授权等。
+
+### 集群数据分片规则
+
+#### Hash Slot
+
+> + Redis没有使用一致性hash算法，而是一种不同形式的切分，其中每个键在概念上都是我们称为的hash槽的一部分
+> + 在Redis集群中总共有16384个hash槽，并且使用CRC16算法来计算每个key放在哪个hash槽中
+> + 举例：假设集群有三个节点 NodeA NodeB NodeC
+>   + NodeA 的hash槽的范围在0 -5500
+>   + NodeB的hash槽的范围在5501-11000
+>   + NodeC的hash槽的范围在11001-16384
+> + 在集群中移除和增加节点时非常简单的
+>   + 比如我们添加一个新节点D，我们需要移动A B C三个节点的一些hash槽到D节点
+>   + 相似的如果我们要移除A节点，我们只要移动A的hash槽到B C即可
+>   + 将hash槽从一个节点移动到另一个节点是不需要停止任何操作的
+>   + 添加和移除节点或者改变节点持有hash的百分比也是不需要停机的
+> + Redis集群支持多个键操作，只要参与单个命令的所有key属于同一个hash槽。
+>   + 用户可以通过使用名为Hash Tags的概念强制多个key成为同一个hash槽的一部分
+>   + 通过{hashTag} key形式将多个key强制成为同一个hash槽的一部分
+
+### Redis 主从
+
+> + 为了保证集群的可用性，Redis集群使用了主从模型，主节点的每个hash槽都有一个到N个副本
+
+### Redis集群一致性
+
+> + Redis集群不能保证强一致性，这就意味着在某些情况下，redis集群可能会丢失向客户端确认的写操作。
+> + redis集群丢失写操作因为它是一个异步复制，这就意味着写操作会发生下面情况
+>   + 向master B写入数据
+>   + master B向客户端答复OK
+>   + master B将写操作备份到B1 B2 B3
+> + 可以看出，在B向客户端答复之前没有等到从B1 B2 B3的确认，因为这对Redis来说是一个禁止性的延迟惩罚，所以如果你的客户端写了一些东西，B会确认写操作，但是在能够将写操作发送到它的从属服务器之前崩溃了，那么其中一个从属服务器（没有收到写操作）可以升级到主服务器，永远丢失写操作。
+> + Redis Cluster在绝对需要时支持同步写入，通过WAIT命令实现。这就大大降低了失败的可能性。但是，请注意，即使使用了同步复制，Redis Cluster也不能实现强一致性：在更复杂的故障场景下，始终有可能将无法接收写入的从设备选为主设备。
+> + 另一个值得注意的场景是Redis集群将丢失写操作，这种情况发生在一个网络分区期间，其中一个客户机与少数实例（至少包括一个主实例）隔离
+
+### Redis集群配置
+
+#### 参数解释
+
+> + **cluster-enabled <yes/no> **：yes开启redis集群支持，no就是单节点启动
+> + **cluster-config-file <filename> **：请注意，尽管有此选项的名称，但这不是用户可编辑的配置文件，而是Redis集群节点在每次发生更改时自动保存集群配置（基本上是状态）的文件，以便能够在启动时重新读取。该文件列出了集群中的其他节点、它们的状态、持久变量等等。通常，由于接收到一些消息，此文件会被重写并刷新到磁盘上
+> + **cluster-node-timeout  <milliseconds>**：Redis群集节点不可用的最长时间，而不被视为失败。如果主节点在超过指定的时间内不可访问，则其从属节点将进行故障转移。此参数控制Redis集群中的其他重要内容。值得注意的是，在指定的时间内无法到达大多数主节点的每个节点都将停止接受查询。
+> + **cluster-slave-validity-factor <factor>** ：如果设置为零，从属者将始终认为自己是有效的，因此总是尝试故障转移主机，而不管主和从机之间的链路保持断开的时间量无关。如果该值为正，则计算最大断开连接时间，即节点超时值乘以此选项提供的系数，如果节点是从属节点，则如果主链路断开连接的时间超过指定的时间，则不会尝试启动故障转移。例如，如果节点超时设置为5秒，有效性因子设置为10，则从节点与主节点断开连接超过50秒的从节点将不会尝试故障转移其主节点。请注意，如果没有能够进行故障转移的从属服务器，任何不同于零的值都可能导致Redis集群在主服务器故障后不可用。在这种情况下，只有当原始主机重新加入集群时，集群才会恢复可用
+> + **cluster-migration-barrier <count>** ：主服务器将保持与之连接的最小从属数量，以便另一个从属机迁移到不再由任何从属服务器覆盖的主服务器
+> + **cluster-require-full-coverage <yes/no>** ：如果设置为yes（默认情况下是这样），那么如果任何节点都没有覆盖一定百分比的密钥空间，集群将停止接受写操作。如果该选项设置为no，则即使只能处理关于密钥子集的请求，集群仍将提供查询
+> + **cluster-allow-reads-when-down <**`yes/no`**>** ：如果设置为no（默认情况下），Redis集群中的节点将在集群标记为failed（失败）时停止服务所有流量，无论是节点无法达到主节点的仲裁，还是未达到完全覆盖率。这可以防止从不知道集群中的更改的节点读取可能不一致的数据。可以将此选项设置为“是”，以允许在失败状态下从节点进行读取，这对于希望优先考虑读取可用性但仍希望防止不一致写入的应用程序很有用。它还可以用于只有一个或两个碎片的Redis集群，因为它允许节点在主节点出现故障时继续提供写操作，但无法进行自动故障切换。
+
+#### 创建和使用redis集群
+
++ _创建文件夹_
+
+  ``` set
+mkdir 7000 7001 7002 7003 7004 7005
+  ```
+
++ _编辑配置文件_
+
+```set
+port 7000
+cluster-enabled yes
+cluster-config-file nodes.conf
+cluster-node-timeout 5000
+appendonly yes
+```
+
+> 分别在不同文件夹编辑配置文件，**注意**：`port`需要配置不同，这里port等于文件夹的名字，方便测试
+
++ _启动redis server_
+
+``` set
+#进入不同目录启动详情的reids实例
+cd 7000
+../redis-server ./redis.conf
+```
+
++ 创建集群
+
+``` set
+redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 \
+127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 \
+--cluster-replicas 1
+```
+
+> cluster-replicas ：表示每个master的slave的数量，这里1表示每个master有1个slave
